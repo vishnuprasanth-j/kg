@@ -1,0 +1,42 @@
+
+Vienna KG — TransE Embedding Results
+=====================================
+
+Dataset
+-------
+TTL file        : ./vienna_kg_entities.ttl
+Total triples   : 135936
+Entities        : 15771
+Relations       : 9
+Flats in KG     : 4633
+Ghost entities  : 29
+
+Model: TransE on CUDA
+  Embedding dim : 100
+  Epochs        : 300 (with early stopping)
+  Batch size    : 512
+  Optimizer     : Adam (lr=0.01)
+
+Link Prediction (test set)
+---------------------------
+MRR             : 0.0582
+Hits@1          : 0.0053
+Hits@10         : 0.1565
+
+Price Prediction (5-fold cross-val, 4633 flats)
+---------------------------------------------------------
+Experiment 1 — Embeddings only
+  R²  : -10.906 (±18.385)
+  MAE : 711.7 EUR (±320.5)
+
+Experiment 2 — Attributes only (rooms, size, floor, location quality, transit score)
+  R²  : -2.340 (±4.091)
+  MAE : 404.0 EUR (±186.4)
+
+Experiment 3 — Embeddings + Attributes combined
+  R²  : -2.253 (±3.980)
+  MAE : 396.0 EUR (±179.6)
+
+Interpretation
+--------------
+Embedding contribution = R²(Exp3) - R²(Exp2) = 0.087

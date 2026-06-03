@@ -1,0 +1,7 @@
+numpy
+pandas
+rdflib
+scikit-learn
+pykeen
+torch
+streamlit
