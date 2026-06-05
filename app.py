@@ -176,13 +176,26 @@ def main() -> None:
 
     with tab_models:
         comparison_path = RESULT_DIR / "kge_model_comparison.csv"
+        literal_comparison_path = RESULT_DIR / "literal_kge_model_comparison.csv"
+        frames = []
         if comparison_path.exists():
-            df = load_csv(str(comparison_path))
+            base_df = load_csv(str(comparison_path))
+            base_df["model_family"] = "structural"
+            frames.append(base_df)
+        if literal_comparison_path.exists():
+            literal_df = load_csv(str(literal_comparison_path))
+            literal_df["model_family"] = "literal-aware"
+            frames.append(literal_df)
+
+        if frames:
+            df = pd.concat(frames, ignore_index=True, sort=False)
             columns = ["model", "mrr", "hits_at_1", "hits_at_3", "hits_at_10"]
+            if "model_family" in df.columns:
+                columns.insert(1, "model_family")
             st.dataframe(df[columns], use_container_width=True, hide_index=True)
             st.bar_chart(df.set_index("model")[["mrr", "hits_at_10"]])
         else:
-            st.info("Run train_kge_models.py to generate model comparison results.")
+            st.info("Run train_kge_models.py or train_literal_kge_models.py to generate model comparison results.")
 
     with tab_flat:
         selected = st.selectbox(

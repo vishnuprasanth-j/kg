@@ -1,2 +1,5 @@
 venv/
 gtfs/stop_times.txt
+__pycache__/
+*.pyc
+artifacts/
