@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 try:
     import pydeck as pdk
@@ -257,6 +258,16 @@ def map_colors(df: pd.DataFrame, color_by: str) -> list[list[int]]:
     return color_scale(df["price"], [254, 229, 217], [165, 15, 21])
 
 
+def render_fixed_deck(deck, height: int) -> None:
+    html = deck.to_html(
+        as_string=True,
+        notebook_display=False,
+        iframe_width="100%",
+        iframe_height=height,
+    )
+    components.html(html, height=height, scrolling=False)
+
+
 def render_vienna_map(df: pd.DataFrame, color_by: str, height: int = 560) -> None:
     map_df = df.dropna(subset=["latitude", "longitude"]).copy()
     if map_df.empty:
@@ -293,19 +304,21 @@ def render_vienna_map(df: pd.DataFrame, color_by: str, height: int = 560) -> Non
     view_state = pdk.ViewState(
         latitude=48.2082,
         longitude=16.3738,
-        zoom=10.7,
+        zoom=11.0,
+        min_zoom=11.0,
+        max_zoom=11.0,
         pitch=0,
+        bearing=0,
     )
     deck = pdk.Deck(
         layers=[layer],
+        views=[pdk.View(type="MapView", controller=False)],
         initial_view_state=view_state,
         tooltip={"html": "{tooltip}", "style": {"backgroundColor": "white", "color": "#111"}},
         map_style="light",
     )
-    try:
-        st.pydeck_chart(deck, use_container_width=True, height=height)
-    except TypeError:
-        st.pydeck_chart(deck, use_container_width=True)
+    deck.view_state = view_state
+    render_fixed_deck(deck, height)
 
 
 def render_similarity_map(
@@ -391,22 +404,23 @@ def render_similarity_map(
         pickable=True,
     )
     view_state = pdk.ViewState(
-        latitude=float(query["latitude"]),
-        longitude=float(query["longitude"]),
-        zoom=11.2,
-        pitch=28,
+        latitude=48.2082,
+        longitude=16.3738,
+        zoom=11.0,
+        min_zoom=11.0,
+        max_zoom=11.0,
+        pitch=0,
         bearing=0,
     )
     deck = pdk.Deck(
         layers=[edge_layer, candidate_layer, query_layer],
+        views=[pdk.View(type="MapView", controller=False)],
         initial_view_state=view_state,
         tooltip={"html": "{tooltip}", "style": {"backgroundColor": "white", "color": "#111"}},
         map_style="light",
     )
-    try:
-        st.pydeck_chart(deck, use_container_width=True, height=height)
-    except TypeError:
-        st.pydeck_chart(deck, use_container_width=True)
+    deck.view_state = view_state
+    render_fixed_deck(deck, height)
 
 
 def flat_kg_paths(flat_uri: str, stop_limit: int = 12, route_limit: int = 40) -> pd.DataFrame:
@@ -540,20 +554,6 @@ def similarity_comparison_table(df: pd.DataFrame) -> pd.DataFrame:
             "transit_score": 0,
             "transit_score_difference": 0,
         }
-    )
-
-
-def district_summary(df: pd.DataFrame) -> pd.DataFrame:
-    return (
-        df.groupby("district", as_index=False)
-        .agg(
-            flats=("flat", "count"),
-            median_rent=("price", "median"),
-            average_rent_per_m2=("rent_per_m2", "mean"),
-            average_transit_score=("transit_score", "mean"),
-            average_value_score=("value_score", "mean"),
-        )
-        .sort_values("district")
     )
 
 
@@ -726,8 +726,6 @@ def main() -> None:
     (
         tab_overview,
         tab_map,
-        tab_deals,
-        tab_analysis,
         tab_models,
         tab_flat,
         tab_similar,
@@ -737,8 +735,6 @@ def main() -> None:
         [
             "KG Overview",
             "Vienna Map",
-            "Deal Finder",
-            "Transit Analysis",
             "Model Comparison",
             "Flat Explorer",
             "Similar Flats",
@@ -836,156 +832,6 @@ def main() -> None:
 
         st.dataframe(
             display_flat_table(map_df.sort_values("value_score", ascending=False), limit=25),
-            use_container_width=True,
-            hide_index=True,
-        )
-
-    with tab_deals:
-        st.subheader("Transit-aware value candidates")
-        col_a, col_b, col_c = st.columns(3)
-        min_score = col_a.slider(
-            "Minimum transit score",
-            int(flats_df["transit_score"].min()),
-            int(flats_df["transit_score"].max()),
-            int(flats_df["transit_score"].median()),
-            key="deal_min_transit",
-        )
-        max_rent_m2 = col_b.slider(
-            "Maximum rent per m2",
-            round(float(flats_df["rent_per_m2"].quantile(0.05)), 1),
-            round(float(flats_df["rent_per_m2"].quantile(0.95)), 1),
-            round(float(flats_df["rent_per_m2"].median()), 1),
-            step=0.1,
-        )
-        top_n_deals = col_c.slider("Show top", 5, 100, 25)
-
-        deals = flats_df[
-            (flats_df["transit_score"] >= min_score)
-            & (flats_df["rent_per_m2"] <= max_rent_m2)
-        ].sort_values("value_score", ascending=False)
-
-        st.dataframe(
-            display_flat_table(deals, limit=top_n_deals),
-            use_container_width=True,
-            hide_index=True,
-        )
-        render_vienna_map(deals.head(top_n_deals), "Transit value", height=440)
-
-    with tab_analysis:
-        analysis_df = flats_df.dropna(
-            subset=["rent_per_m2", "transit_score", "district"]
-        ).copy()
-
-        col_a, col_b = st.columns([1, 2])
-        price_measure = col_a.selectbox(
-            "Price measure",
-            ["Rent per m2", "Monthly rent"],
-        )
-        selected_districts = col_b.multiselect(
-            "Districts",
-            sorted(analysis_df["district"].unique()),
-            default=[],
-            key="analysis_districts",
-        )
-        if selected_districts:
-            analysis_df = analysis_df[
-                analysis_df["district"].isin(selected_districts)
-            ]
-
-        y_column = "rent_per_m2" if price_measure == "Rent per m2" else "price"
-        lower = analysis_df[y_column].quantile(0.01)
-        upper = analysis_df[y_column].quantile(0.99)
-        chart_df = analysis_df[
-            analysis_df[y_column].between(lower, upper)
-        ].copy()
-        chart_df["point_size"] = 28
-
-        correlation = chart_df["transit_score"].corr(chart_df[y_column])
-        cols = st.columns(4)
-        cols[0].metric("Flats analysed", f"{len(chart_df):,}")
-        cols[1].metric("Transit-price correlation", f"{correlation:.3f}")
-        cols[2].metric(
-            f"Median {price_measure.lower()}",
-            f"EUR {chart_df[y_column].median():.2f}",
-        )
-        cols[3].metric(
-            "Median transit score",
-            f"{chart_df['transit_score'].median():.0f}",
-        )
-
-        render_scatter_chart(
-            chart_df,
-            "transit_score",
-            y_column,
-            "district",
-        )
-
-        band_labels = ["Low", "Medium", "High", "Very high"]
-        band_count = min(4, len(chart_df))
-        if band_count >= 2:
-            chart_df["transit_band"] = pd.qcut(
-                chart_df["transit_score"].rank(method="first"),
-                q=band_count,
-                labels=band_labels[:band_count],
-            )
-        else:
-            chart_df["transit_band"] = "All"
-        band_summary = (
-            chart_df.groupby("transit_band", observed=True, as_index=False)
-            .agg(
-                flats=("flat", "count"),
-                median_price=(y_column, "median"),
-                average_price=(y_column, "mean"),
-                median_transit=("transit_score", "median"),
-            )
-        )
-
-        col_a, col_b = st.columns(2)
-        col_a.markdown(f"**{price_measure} by transit-access band**")
-        with col_a:
-            render_bar_chart(
-                band_summary,
-                "transit_band",
-                ["median_price", "average_price"],
-            )
-        col_b.markdown("**Transit-access bands**")
-        col_b.dataframe(
-            band_summary.round(
-                {
-                    "median_price": 2,
-                    "average_price": 2,
-                    "median_transit": 0,
-                }
-            ),
-            use_container_width=True,
-            hide_index=True,
-        )
-
-        district_df = district_summary(analysis_df)
-        col_a, col_b = st.columns(2)
-        col_a.markdown("**Average rent per m2 by district**")
-        with col_a:
-            render_bar_chart(
-                district_df,
-                "district",
-                ["average_rent_per_m2"],
-            )
-        col_b.markdown("**Average transit score by district**")
-        with col_b:
-            render_bar_chart(
-                district_df,
-                "district",
-                ["average_transit_score"],
-            )
-        st.dataframe(
-            district_df.round(
-                {
-                    "median_rent": 0,
-                    "average_rent_per_m2": 2,
-                    "average_transit_score": 1,
-                    "average_value_score": 2,
-                }
-            ),
             use_container_width=True,
             hide_index=True,
         )
@@ -1174,31 +1020,8 @@ def main() -> None:
         if result_path.exists():
             results = load_csv(str(result_path))
             st.dataframe(results, use_container_width=True, hide_index=True)
-
-            price_rows = results[results["target"] == "price"]
-            if not price_rows.empty:
-                chart = price_rows.pivot(
-                    index="model",
-                    columns="experiment",
-                    values="mae",
-                ).reset_index()
-                render_bar_chart(
-                    chart,
-                    "model",
-                    [column for column in chart.columns if column != "model"],
-                )
         else:
             st.info("Run evaluate_price.py to generate price prediction results.")
-
-        prediction_files = sorted(PREDICTION_DIR.glob("*_price_predictions.csv"))
-        if prediction_files:
-            selected_prediction = st.selectbox(
-                "Predictions",
-                prediction_files,
-                format_func=lambda path: path.name,
-            )
-            predictions = load_csv(str(selected_prediction))
-            st.dataframe(predictions.head(100), use_container_width=True, hide_index=True)
 
 
 if __name__ == "__main__":
