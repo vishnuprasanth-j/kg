@@ -42,12 +42,6 @@ Run the Streamlit application:
 python -m streamlit run app.py
 ```
 
-For a remote Jupyter or JupyterHub environment:
-
-```bash
-python -m streamlit run app.py --server.address 0.0.0.0 --server.port 8501
-```
-
 The app expects the processed KG files and generated experiment artifacts.
 If `artifacts/` is missing, run the experiment commands below first.
 
