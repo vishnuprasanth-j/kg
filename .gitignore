@@ -1,5 +1,26 @@
 venv/
-gtfs/stop_times.txt
+.venv/
+
 __pycache__/
-*.pyc
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Generated training, evaluation, and model outputs.
 artifacts/
+models/
+
+# GTFS source data is kept locally. Only its setup note is committed.
+gtfs/*
+!gtfs/README.md
+
+# Local portfolio/report material and LaTeX build products.
+portfolio-report.tex
+portfolio-assets/
+portfolio-template.*
+screenshots/
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz

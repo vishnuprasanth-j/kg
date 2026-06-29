@@ -1,6 +1,6 @@
 """
-convert_to_turtle.py
---------------------
+conversion_v2.py
+----------------
 Converts GTFS transit data + Willhaben flat listings into:
   1. vienna_kg_entities.ttl   → structural triples only (for PyKEEN)
   2. vienna_kg_attributes.json → numeric attributes (for regression)
@@ -15,7 +15,7 @@ Key design decisions:
   - Transit score (unique lines within 500m) stored in attributes JSON
 
 Usage:
-    python convert_to_turtle.py
+    python conversion_v2.py
 
 Inputs:
     gtfs/stops.txt, routes.txt, trips.txt, stop_times.txt

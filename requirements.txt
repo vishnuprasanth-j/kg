@@ -1,6 +1,7 @@
 numpy
 pandas
 matplotlib
+pydeck
 rdflib
 scikit-learn
 pykeen
